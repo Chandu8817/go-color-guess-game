@@ -7,13 +7,18 @@ import (
 	"net"
 	"os"
 	"time"
-
-	"github.com/color-predection/client/auth"
-	"github.com/color-predection/client/storage"
 )
 
+type UserDetail struct {
+	Name     string
+	Password string
+	Email    string
+	Age      int
+	IsLogin  bool
+}
+
 type Response struct {
-	User   storage.UserDetail
+	User   UserDetail
 	Method string
 }
 
@@ -58,7 +63,7 @@ func main() {
 				fmt.Println(err)
 
 			}
-			user := storage.UserDetail{
+			user := UserDetail{
 				Name:     name,
 				Password: password,
 				Email:    email,
@@ -107,29 +112,100 @@ func main() {
 			}
 			inputs := scanner.Text()
 			fmt.Sscan(inputs, &email, &password)
-			var user storage.UserDetail
-			user = auth.UserLogin(email, password)
-			fmt.Println(user, "<<<<<<")
 
-			if user.Name != "" {
-				fmt.Println("User logged in:", user)
+			user := UserDetail{
+
+				Password: password,
+				Email:    email,
+			}
+
+			response := Response{User: user, Method: method}
+			// Serialize the UserDetail struct
+			serializedUser, err := serializeUserDetail(response)
+			if err != nil {
+				fmt.Println("Error serializing user:", err)
+				return
+			}
+
+			// _, err = conn.Write([]byte(method))
+			// if err != nil {
+			// 	fmt.Println("Error sending met:", err)
+			// 	return
+			// }
+
+			// Send the serialized user data to the server
+
+			_, err = conn.Write(serializedUser)
+			if err != nil {
+				fmt.Println("Error sending message:", err)
+				return
+			}
+
+			// Read the server's response
+			buffer := make([]byte, 1024)
+			n, err := conn.Read(buffer)
+			if err != nil {
+				fmt.Println("Error reading response:", err)
+				return
+			}
+
+			res := string(buffer[:n])
+			fmt.Printf("Server response: %s\n", res)
+
+			if res != "" {
+				fmt.Println("User logged in:", res)
 			} else {
 				fmt.Println("Invalid email/password.")
 			}
 
-		case "ls":
-			users := storage.Users
-			fmt.Println("User List:")
-			for _, user := range users {
-				fmt.Println(user)
-			}
+		// case "ls":
+		// 	users := Users
+		// 	fmt.Println("User List:")
+		// 	for _, user := range users {
+		// 		fmt.Println(user)
+		// 	}
 		case "lg":
 			if !scanner.Scan() {
 				break
 			}
 			inputs := scanner.Text()
 			fmt.Sscan(inputs, &email)
-			fmt.Println(auth.LogOut(email))
+
+			user := UserDetail{
+
+				Email: email,
+			}
+
+			response := Response{User: user, Method: method}
+			// Serialize the UserDetail struct
+			serializedUser, err := serializeUserDetail(response)
+			if err != nil {
+				fmt.Println("Error serializing user:", err)
+				return
+			}
+
+			_, err = conn.Write(serializedUser)
+			if err != nil {
+				fmt.Println("Error sending message:", err)
+				return
+			}
+
+			// Read the server's response
+			buffer := make([]byte, 1024)
+			n, err := conn.Read(buffer)
+			if err != nil {
+				fmt.Println("Error reading response:", err)
+				return
+			}
+
+			res := string(buffer[:n])
+			fmt.Printf("Server response: %s\n", res)
+
+			if res != "" {
+				fmt.Println("User logout :", res)
+			} else {
+				fmt.Println("Invalid email.")
+			}
 
 		case "ex":
 			start = false
@@ -147,8 +223,8 @@ func serializeUserDetail(response Response) ([]byte, error) {
 }
 
 // Deserialize the byte slice into a UserDetail struct
-func deserializeUserDetail(data []byte) (storage.UserDetail, error) {
-	var user storage.UserDetail
+func deserializeUserDetail(data []byte) (UserDetail, error) {
+	var user UserDetail
 	err := json.Unmarshal(data, &user) // Using JSON decoding
 	return user, err
 }
