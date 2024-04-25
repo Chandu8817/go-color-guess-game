@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/color-predection/server/auth"
 	"github.com/color-predection/server/storage"
 )
 
@@ -60,9 +61,10 @@ func handleConnection(conn net.Conn) {
 
 		// Send a response to the client and print the response on server
 		if receivedData.Method == "s" {
-			storage.Users = append(storage.Users, receivedData.User)
+			// storage.Users = append(storage.Users, receivedData.User)
 			// Use receivedUser, which is of type UserDetail
 			fmt.Println("Received users:")
+			auth.UserSignUp(receivedData.User)
 			for i := 0; i < len(storage.Users); i++ {
 
 				fmt.Println(storage.Users[i])
@@ -83,6 +85,49 @@ func handleConnection(conn net.Conn) {
 		}
 
 		if receivedData.Method == "l" {
+
+			fmt.Println("Login request")
+			user, err := auth.UserLogin(receivedData.User.Email, receivedData.User.Password)
+
+			if err != nil {
+				fmt.Println("Login failed", err)
+
+			}
+			fmt.Println("login success", user)
+			serializedUser, err := serializeUserDetail(user)
+			if err != nil {
+				fmt.Println("serializedUser failed", err)
+
+			}
+
+			_, err = conn.Write([]byte(serializedUser))
+			if err != nil {
+				fmt.Println("Error sending message:", err)
+				os.Exit(1)
+			}
+
+		}
+
+		if receivedData.Method == "lg" {
+
+			fmt.Println("Logout request")
+			logout := auth.LogOut(receivedData.User.Email)
+
+			if logout != "" {
+				user := auth.GetUser(receivedData.User.Email)
+				fmt.Println("Logout success", user)
+				serializedUser, err := serializeUserDetail(user)
+				if err != nil {
+					fmt.Println("serializedUser failed", err)
+
+				}
+
+				_, err = conn.Write([]byte(serializedUser))
+				if err != nil {
+					fmt.Println("Error sending message:", err)
+					os.Exit(1)
+				}
+			}
 
 		}
 
