@@ -9,3 +9,6 @@
  6. Take user input for gusse
  7. generate the random color output from list.
  8. store the user bid amount. // 10 *5 = 50 
+
+
+ IN porgress
